@@ -4,11 +4,25 @@ import requests
 st.set_page_config(page_title="DocGenius", layout="wide")
 st.title("📄 DocGenius - Intelligent PDF Chat")
 
-# Session state setup
+# Session state setup — only set default once
 if "uploaded" not in st.session_state:
     st.session_state.uploaded = False
 if "messages" not in st.session_state:
     st.session_state.messages = []
+
+# Cache the chat response to avoid duplicate calls during reruns
+@st.cache_data(show_spinner=False)
+def fetch_chat_response(messages):
+    try:
+        response = requests.post(
+            "https://docgenius-backend-voiu.onrender.com/chat", json={"messages": messages}
+        )
+        if response.status_code == 200:
+            return response.json().get("answer", "No response.")
+        else:
+            return f"Error: {response.status_code}"
+    except Exception as e:
+        return f"Error: {str(e)}"
 
 # --------------------------
 # 📁 Step 1: Upload PDF File
@@ -43,24 +57,18 @@ if st.session_state.uploaded:
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
 
-    # Chat input
-    if prompt := st.chat_input("Ask something about the PDF..."):
-        st.chat_message("user").markdown(prompt)
+    # Chat input and response handling — only update session state inside this block
+    prompt = st.chat_input("Ask something about the PDF...")
+    if prompt:
+        # Append user message once when prompt submitted
         st.session_state.messages.append({"role": "user", "content": prompt})
+        st.chat_message("user").markdown(prompt)
 
-        with st.chat_message("assistant"):
-            with st.spinner("Thinking..."):
-                try:
-                    response = requests.post("https://docgenius-backend-voiu.onrender.com/chat", json={"messages": st.session_state.messages})
-                    if response.status_code == 200:
-                        answer = response.json().get("answer", "No response.")
-                    else:
-                        answer = f"Error: {response.status_code}"
-                except Exception as e:
-                    answer = f"Error: {str(e)}"
-
-                st.markdown(answer)
-                st.session_state.messages.append({"role": "assistant", "content": answer})
+        # Get cached or new response from backend
+        with st.spinner("Thinking..."):
+            answer = fetch_chat_response(st.session_state.messages)
+            st.chat_message("assistant").markdown(answer)
+            st.session_state.messages.append({"role": "assistant", "content": answer})
 
     # Optional reset button
     if st.button("🔄 Start Over"):
