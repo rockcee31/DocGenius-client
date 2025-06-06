@@ -21,7 +21,7 @@ if not st.session_state.uploaded:
             with st.spinner("Uploading..."):
                 files = {'file': (uploaded_file.name, uploaded_file, uploaded_file.type)}
                 try:
-                    res = requests.post("http://localhost:8000/upload", files=files)
+                    res = requests.post("https://docgenius-backend-voiu.onrender.com/upload", files=files)
                     if res.status_code == 200:
                         st.success("✅ PDF uploaded successfully.")
                         st.session_state.uploaded = True
@@ -51,7 +51,7 @@ if st.session_state.uploaded:
         with st.chat_message("assistant"):
             with st.spinner("Thinking..."):
                 try:
-                    response = requests.post("http://localhost:8000/chat", json={"messages": st.session_state.messages})
+                    response = requests.post("https://docgenius-backend-voiu.onrender.com/chat", json={"messages": st.session_state.messages})
                     if response.status_code == 200:
                         answer = response.json().get("answer", "No response.")
                     else:
